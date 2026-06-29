@@ -288,7 +288,6 @@ Skrip menangkap semua exception per file dan melanjutkan ke file berikutnya. Sal
 - **Semua `.xls` di folder ikut diproses** — Pastikan tidak ada file `.xls` lain (template, catatan, dll.) di folder yang sama, karena semuanya akan ikut diproses.
 - **File hasil tidak menimpa file sumber** — Output selalu berekstensi `.xlsx` dengan suffix `_hasil`, sehingga file `.xls` asli aman.
 - **Urutan baris di Ringkasan** — Pengurutan dilakukan berdasarkan kolom `No. Pelanggan` (kode pelanggan), bukan nama. Jika kode mengandung prefix alfanumerik (mis. `MGL-`, `YY-`), urutan akan bersifat leksikografis, bukan numerik murni.
-- **Tidak ada filter FRAUD atau aging** — Berbeda dengan skrip AR monitoring lainnya, skrip ini memproses **semua baris** tanpa filter umur piutang atau ekslusi FRAUD. Ringkasan mencakup seluruh faktur yang ada di file, berapapun umurnya.
 - **AVG adalah rata-rata sederhana** — `AVG UMUR PIUTANG` dan `AVG NILAI FAKTUR` dihitung sebagai rata-rata aritmatika biasa dari seluruh faktur pelanggan tersebut di file, bukan rata-rata tertimbang.
 
 ---
