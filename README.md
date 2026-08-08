@@ -2,7 +2,7 @@
 
 > **Pembersih batch otomatis laporan AR dari Accurate — sekaligus menghitung rata-rata umur piutang dan nilai faktur per pelanggan**
 
-Skrip Python satu file yang memproses **semua file `.xls`** di folder yang sama secara sekaligus (batch). Membaca ekspor laporan piutang dari Accurate, membersihkan format angka Indonesia (titik sebagai pemisah ribuan), memilih 9 kolom relevan, lalu menghasilkan file `_hasil.xlsx` per sumber — berisi dua sheet: **Data Bersih** (baris per faktur) dan **Ringkasan** (rata-rata per pelanggan).
+Skrip Python satu file yang memproses **semua file `.xls`** di folder yang sama secara sekaligus (batch) (Gunakan Daftar Faktur Penjualan). Membaca ekspor laporan piutang dari Accurate, membersihkan format angka Indonesia (titik sebagai pemisah ribuan), memilih 9 kolom relevan, lalu menghasilkan file `_hasil.xlsx` per sumber — berisi dua sheet: **Data Bersih** (baris per faktur) dan **Ringkasan** (rata-rata per pelanggan).
 
 ---
 
