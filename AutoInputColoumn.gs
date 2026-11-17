@@ -19,16 +19,42 @@ function getLookupMap(ss) {
   var map = {};
 
   for (var i = 0; i < rawData.length; i++) {
-    var key = rawData[i][0] ? rawData[i][0].toString().trim() : "";
+    var key = rawData[i][0] ? rawData[i][0].toString().trim().toUpperCase() : "";
     if (key !== "") {
-      map[key] = [
-        rawData[i][2],
-        rawData[i][3],
-        rawData[i][4] 
-      ];
+      map[key] = {
+        rowIndex: i + 3,
+        values: [
+          rawData[i][2],
+          rawData[i][3],
+          rawData[i][4]
+        ]
+      };
     }
   }
   return map;
+}
+
+function cariDataTerbaru(rawKey, map) {
+  if (!rawKey) return null;
+
+  var codes = rawKey.toString().split(/[&,;/]+/).map(function(c) {
+    return c.trim().toUpperCase();
+  }).filter(Boolean);
+
+  var bestMatch = null;
+  var maxRowIndex = -1;
+
+  for (var k = 0; k < codes.length; k++) {
+    var code = codes[k];
+    if (map[code]) {
+      if (map[code].rowIndex > maxRowIndex) {
+        maxRowIndex = map[code].rowIndex;
+        bestMatch = map[code].values;
+      }
+    }
+  }
+
+  return bestMatch;
 }
 
 function onEdit(e) {
@@ -41,7 +67,7 @@ function onEdit(e) {
   var colStart = range.getColumn();
   var colEnd = colStart + range.getNumColumns() - 1;
 
-  if (colStart > 9 || colEnd < 9) return;
+  if (colStart > 7 || colEnd < 7) return;
 
   var rowStart = Math.max(2, range.getRow());
   var numRows = range.getLastRow() - rowStart + 1;
@@ -51,7 +77,7 @@ function onEdit(e) {
   var map = getLookupMap(ss);
   if (!map) return;
 
-  var targetRange = sheet.getRange(rowStart, 9, numRows, 4);
+  var targetRange = sheet.getRange(rowStart, 7, numRows, 4);
   var values = targetRange.getValues();
 
   for (var i = 0; i < values.length; i++) {
@@ -61,10 +87,13 @@ function onEdit(e) {
       values[i][1] = "";
       values[i][2] = "";
       values[i][3] = "";
-    } else if (map[noPelanggan]) {
-      values[i][1] = map[noPelanggan][0];
-      values[i][2] = map[noPelanggan][1];
-      values[i][3] = map[noPelanggan][2];
+    } else {
+      var match = cariDataTerbaru(noPelanggan, map);
+      if (match) {
+        values[i][1] = match[0];
+        values[i][2] = match[1];
+        values[i][3] = match[2];
+      }
     }
   }
 
@@ -89,7 +118,7 @@ function isiSemuaDataKosong() {
   }
 
   var totalRows = lastRow - 1;
-  var dataRange = sheet.getRange(2, 9, totalRows, 4);
+  var dataRange = sheet.getRange(2, 7, totalRows, 4);
   var values = dataRange.getValues();
   var totalDiisi = 0;
 
@@ -99,13 +128,14 @@ function isiSemuaDataKosong() {
     var avgFaktur = values[i][2];
     var jmlInv = values[i][3];
 
-    var isKosong = (avgUmur === "" || avgFaktur === "" || jmlInv === "");
+    var isKosong = (avgUmur === "" || avgFaktur === "" || jmlInv === "" || avgUmur === null || avgFaktur === null || jmlInv === null);
 
     if (noPelanggan !== "" && isKosong) {
-      if (map[noPelanggan]) {
-        values[i][1] = map[noPelanggan][0];
-        values[i][2] = map[noPelanggan][1];
-        values[i][3] = map[noPelanggan][2];
+      var match = cariDataTerbaru(noPelanggan, map);
+      if (match) {
+        values[i][1] = match[0];
+        values[i][2] = match[1];
+        values[i][3] = match[2];
         totalDiisi++;
       }
     }
