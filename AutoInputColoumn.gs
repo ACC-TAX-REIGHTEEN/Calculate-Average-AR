@@ -100,6 +100,31 @@ function onEdit(e) {
   targetRange.setValues(values);
 }
 
+function onFormSubmit(e) {
+  if (!e || !e.range) return;
+  var sheet = e.range.getSheet();
+  if (sheet.getName() !== "Form Responses 1") return;
+
+  var row = e.range.getRow();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var map = getLookupMap(ss);
+  if (!map) return;
+
+  var targetRange = sheet.getRange(row, 7, 1, 4);
+  var values = targetRange.getValues();
+
+  var noPelanggan = values[0][0] ? values[0][0].toString().trim() : "";
+  if (noPelanggan !== "") {
+    var match = cariDataTerbaru(noPelanggan, map);
+    if (match) {
+      values[0][1] = match[0];
+      values[0][2] = match[1];
+      values[0][3] = match[2];
+      targetRange.setValues(values);
+    }
+  }
+}
+
 function isiSemuaDataKosong() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Form Responses 1");
@@ -128,7 +153,8 @@ function isiSemuaDataKosong() {
     var avgFaktur = values[i][2];
     var jmlInv = values[i][3];
 
-    var isKosong = (avgUmur === "" || avgFaktur === "" || jmlInv === "" || avgUmur === null || avgFaktur === null || jmlInv === null);
+    var isKosong = (avgUmur === "" || avgFaktur === "" || jmlInv === "" || 
+                    avgUmur === null || avgFaktur === null || jmlInv === null);
 
     if (noPelanggan !== "" && isKosong) {
       var match = cariDataTerbaru(noPelanggan, map);
