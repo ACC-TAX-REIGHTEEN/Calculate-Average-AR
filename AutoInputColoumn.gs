@@ -2,7 +2,19 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("⚙️ Otomatisasi")
     .addItem("Perbarui / Isi Data AVG yang Kosong", "isiSemuaDataKosong")
+    .addSeparator()
+    .addItem("▶️ Aktifkan Sinkronisasi Latar Belakang", "pasangPemicuOtomatis")
+    .addItem("⏹️ Nonaktifkan Sinkronisasi Latar Belakang", "hapusPemicuOtomatis")
     .addToUi();
+}
+
+function formatNoPelangganToUpper(rawKey) {
+  if (!rawKey) return "";
+  var parts = rawKey.toString().split(/[&,;/]+/).map(function(c) {
+    return c.trim().toUpperCase().replace(/\s*-\s*/g, "-");
+  }).filter(Boolean);
+
+  return parts.join(" & ");
 }
 
 function getLookupMap(ss) {
@@ -19,16 +31,23 @@ function getLookupMap(ss) {
   var map = {};
 
   for (var i = 0; i < rawData.length; i++) {
-    var key = rawData[i][0] ? rawData[i][0].toString().trim().toUpperCase() : "";
-    if (key !== "") {
-      map[key] = {
-        rowIndex: i + 3,
-        values: [
-          rawData[i][2],
-          rawData[i][3],
-          rawData[i][4]
-        ]
-      };
+    var rawCode = rawData[i][0] ? rawData[i][0].toString() : "";
+    if (rawCode.trim() !== "") {
+      var subCodes = rawCode.split(/[&,;/]+/).map(function(c) {
+        return c.trim().toUpperCase().replace(/\s*-\s*/g, "-");
+      }).filter(Boolean);
+
+      for (var j = 0; j < subCodes.length; j++) {
+        var key = subCodes[j];
+        map[key] = {
+          rowIndex: i + 3,
+          values: [
+            rawData[i][2],
+            rawData[i][3],
+            rawData[i][4]
+          ]
+        };
+      }
     }
   }
   return map;
@@ -38,7 +57,7 @@ function cariDataTerbaru(rawKey, map) {
   if (!rawKey) return null;
 
   var codes = rawKey.toString().split(/[&,;/]+/).map(function(c) {
-    return c.trim().toUpperCase();
+    return c.trim().toUpperCase().replace(/\s*-\s*/g, "-");
   }).filter(Boolean);
 
   var bestMatch = null;
@@ -81,14 +100,18 @@ function onEdit(e) {
   var values = targetRange.getValues();
 
   for (var i = 0; i < values.length; i++) {
-    var noPelanggan = values[i][0] ? values[i][0].toString().trim() : "";
+    var rawNoPelanggan = values[i][0] ? values[i][0].toString() : "";
     
-    if (noPelanggan === "") {
+    if (rawNoPelanggan.trim() === "") {
+      values[i][0] = "";
       values[i][1] = "";
       values[i][2] = "";
       values[i][3] = "";
     } else {
-      var match = cariDataTerbaru(noPelanggan, map);
+      var formattedCode = formatNoPelangganToUpper(rawNoPelanggan);
+      values[i][0] = formattedCode;
+
+      var match = cariDataTerbaru(formattedCode, map);
       if (match) {
         values[i][1] = match[0];
         values[i][2] = match[1];
@@ -101,11 +124,18 @@ function onEdit(e) {
 }
 
 function onFormSubmit(e) {
-  if (!e || !e.range) return;
-  var sheet = e.range.getSheet();
+  var sheet;
+  var row;
+
+  if (e && e.range) {
+    sheet = e.range.getSheet();
+    row = e.range.getRow();
+  } else {
+    return;
+  }
+
   if (sheet.getName() !== "Form Responses 1") return;
 
-  var row = e.range.getRow();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var map = getLookupMap(ss);
   if (!map) return;
@@ -113,15 +143,19 @@ function onFormSubmit(e) {
   var targetRange = sheet.getRange(row, 7, 1, 4);
   var values = targetRange.getValues();
 
-  var noPelanggan = values[0][0] ? values[0][0].toString().trim() : "";
-  if (noPelanggan !== "") {
-    var match = cariDataTerbaru(noPelanggan, map);
+  var rawNoPelanggan = values[0][0] ? values[0][0].toString() : "";
+  if (rawNoPelanggan.trim() !== "") {
+    var formattedCode = formatNoPelangganToUpper(rawNoPelanggan);
+    values[0][0] = formattedCode;
+
+    var match = cariDataTerbaru(formattedCode, map);
     if (match) {
       values[0][1] = match[0];
       values[0][2] = match[1];
       values[0][3] = match[2];
-      targetRange.setValues(values);
     }
+    targetRange.setValues(values);
+    Logger.log("onFormSubmit: Baris " + row + " berhasil diproses di latar belakang.");
   }
 }
 
@@ -129,7 +163,7 @@ function isiSemuaDataKosong() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Form Responses 1");
   if (!sheet) {
-    ss.toast("Sheet 'Form Responses 1' tidak ditemukan.", "Peringatan", 3);
+    Logger.log("Sheet 'Form Responses 1' tidak ditemukan.");
     return;
   }
 
@@ -138,17 +172,27 @@ function isiSemuaDataKosong() {
 
   var map = getLookupMap(ss);
   if (!map) {
-    ss.toast("Data pada sheet 'AVG AR' tidak ditemukan atau kosong.", "Peringatan", 3);
+    Logger.log("Data pada sheet 'AVG AR' tidak ditemukan atau kosong.");
     return;
   }
 
   var totalRows = lastRow - 1;
   var dataRange = sheet.getRange(2, 7, totalRows, 4);
   var values = dataRange.getValues();
-  var totalDiisi = 0;
+  var totalDiubah = 0;
 
   for (var i = 0; i < values.length; i++) {
-    var noPelanggan = values[i][0] ? values[i][0].toString().trim() : "";
+    var rawNoPelanggan = values[i][0] ? values[i][0].toString() : "";
+    if (rawNoPelanggan.trim() === "") continue;
+
+    var formattedCode = formatNoPelangganToUpper(rawNoPelanggan);
+    var barisBerubah = false;
+
+    if (values[i][0] !== formattedCode) {
+      values[i][0] = formattedCode;
+      barisBerubah = true;
+    }
+
     var avgUmur = values[i][1];
     var avgFaktur = values[i][2];
     var jmlInv = values[i][3];
@@ -156,21 +200,68 @@ function isiSemuaDataKosong() {
     var isKosong = (avgUmur === "" || avgFaktur === "" || jmlInv === "" || 
                     avgUmur === null || avgFaktur === null || jmlInv === null);
 
-    if (noPelanggan !== "" && isKosong) {
-      var match = cariDataTerbaru(noPelanggan, map);
+    if (isKosong) {
+      var match = cariDataTerbaru(formattedCode, map);
       if (match) {
         values[i][1] = match[0];
         values[i][2] = match[1];
         values[i][3] = match[2];
-        totalDiisi++;
+        barisBerubah = true;
       }
+    }
+
+    if (barisBerubah) {
+      totalDiubah++;
     }
   }
 
-  if (totalDiisi > 0) {
+  if (totalDiubah > 0) {
     dataRange.setValues(values);
-    ss.toast("Berhasil mengisi " + totalDiisi + " baris data yang kosong!", "Sukses", 4);
+    Logger.log("isiSemuaDataKosong: Berhasil memproses " + totalDiubah + " baris data.");
+    try {
+      ss.toast("Berhasil memproses " + totalDiubah + " baris data!", "Sukses", 4);
+    } catch (e) {}
   } else {
-    ss.toast("Semua baris sudah terisi atau kode pelanggan tidak ditemukan di AVG AR.", "Informasi", 4);
+    Logger.log("isiSemuaDataKosong: Tidak ada baris kosong atau perubahan baru.");
   }
+}
+
+function pasangPemicuOtomatis() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  hapusPemicuOtomatis();
+
+  ScriptApp.newTrigger("onFormSubmit")
+    .forSpreadsheet(ss)
+    .onFormSubmit()
+    .create();
+
+  ScriptApp.newTrigger("isiSemuaDataKosong")
+    .timeBased()
+    .everyMinutes(10)
+    .create();
+
+  Logger.log("Pemicu latar belakang berhasil dipasang.");
+  try {
+    ss.toast("Pemicu aktif! Data akan otomatis terisi 24/7 tanpa perlu membuka sheet.", "Pemicu Terpasang", 5);
+  } catch (e) {}
+}
+
+function hapusPemicuOtomatis() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var count = 0;
+
+  for (var i = 0; i < triggers.length; i++) {
+    var fn = triggers[i].getHandlerFunction();
+    if (fn === "onFormSubmit" || fn === "isiSemuaDataKosong") {
+      ScriptApp.deleteTrigger(triggers[i]);
+      count++;
+    }
+  }
+
+  Logger.log("Sebanyak " + count + " pemicu berhasil dihapus.");
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  try {
+    ss.toast("Pemicu latar belakang telah dinonaktifkan.", "Pemicu Dihapus", 4);
+  } catch (e) {}
 }
